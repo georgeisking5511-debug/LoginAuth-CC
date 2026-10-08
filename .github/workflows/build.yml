@@ -1,0 +1,35 @@
+﻿name: Build LoginAuth
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - run: swiftc --version
+      - run: |
+          mkdir -p LoginAuth.app/Contents/MacOS LoginAuth.app/Contents/Resources
+          swiftc -O -parse-as-library -o LoginAuth.app/Contents/MacOS/LoginAuth LoginAuth.swift
+      - run: |
+          cat > LoginAuth.app/Contents/Info.plist <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+          <key>CFBundleExecutable</key><string>LoginAuth</string>
+          <key>CFBundleIdentifier</key><string>com.local.loginauth</string>
+          <key>CFBundleName</key><string>LoginAuth</string>
+          <key>CFBundleDisplayName</key><string>LoginAuth</string>
+          <key>CFBundlePackageType</key><string>APPL</string>
+          <key>CFBundleShortVersionString</key><string>1.0</string>
+          <key>CFBundleVersion</key><string>1</string>
+          <key>LSMinimumSystemVersion</key><string>11.0</string>
+          <key>NSHighResolutionCapable</key><true/>
+          <key>NSPrincipalClass</key><string>NSApplication</string>
+          <key>LSUIElement</key><true/>
+          </dict></plist>
+          EOF
+          codesign --force --deep --sign - LoginAuth.app
+      - run: zip -ry LoginAuth.app.zip LoginAuth.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LoginAuth-app
+          path: LoginAuth.app.zip
