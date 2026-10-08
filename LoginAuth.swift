@@ -117,8 +117,12 @@ struct FinderPadlockIcon: View {
     }
 }
 
-private let fieldButtonFill = Color.black.opacity(0.13)
 private let appleSystemBlue = Color(red: 0.0, green: 0.478, blue: 1.0)
+
+// Focused field is more opaque; unfocused is softer
+private func fieldFill(focused: Bool) -> Color {
+    Color.black.opacity(focused ? 0.20 : 0.13)
+}
 
 struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -127,7 +131,7 @@ struct SecondaryButtonStyle: ButtonStyle {
             .foregroundColor(.primary)
             .frame(maxWidth: .infinity)
             .frame(height: 24)
-            .background(Capsule(style: .continuous).fill(fieldButtonFill))
+            .background(Capsule(style: .continuous).fill(Color.black.opacity(0.13)))
             .contentShape(Capsule(style: .continuous))
             .opacity(configuration.isPressed ? 0.70 : 1.0)
     }
@@ -156,7 +160,7 @@ struct ContentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             FinderPadlockIcon()
-                .padding(.bottom, 18)
+                .padding(.bottom, 20)
 
             Text("Finder")
                 .font(.system(size: 15, weight: .bold))
@@ -173,8 +177,9 @@ struct ContentView: View {
                 .foregroundColor(.primary)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.bottom, 14)
+                .padding(.bottom, 18)
 
+            // Username field
             ZStack(alignment: .leading) {
                 if username.isEmpty {
                     Text("Username")
@@ -192,9 +197,14 @@ struct ContentView: View {
                     .disabled(isLoading)
                     .onSubmit { focusedField = .password }
             }
-            .background(fieldBg)
-            .padding(.bottom, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(fieldFill(focused: focusedField == .username))
+            )
+            .overlay(focusGlow(active: focusedField == .username))
+            .padding(.bottom, 10)
 
+            // Password field
             ZStack(alignment: .leading) {
                 if password.isEmpty {
                     Text("Password")
@@ -212,8 +222,12 @@ struct ContentView: View {
                     .disabled(isLoading)
                     .onSubmit { submit() }
             }
-            .background(fieldBg)
-            .padding(.bottom, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(fieldFill(focused: focusedField == .password))
+            )
+            .overlay(focusGlow(active: focusedField == .password))
+            .padding(.bottom, 18)
 
             HStack(spacing: 12) {
                 Button("Cancel") { cancel() }
@@ -234,20 +248,22 @@ struct ContentView: View {
                 }
             }
         }
-        .padding(14)
-        .frame(width: 264)
-        .background(
-            VisualEffectView(material: .popover)
-        )
+        .padding(16)
+        .frame(width: 268)
+        .background(VisualEffectView(material: .popover))
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
         )
-        .shadow(color: .black.opacity(0.22), radius: 22, x: 0, y: 8)
-        .padding(.top, 12)
-        .padding(.horizontal, 16)
-        .padding(.bottom, 22)
+        // compositingGroup flattens the blur + content; then two shadow layers
+        // give the soft fade-out aura instead of a hard box
+        .compositingGroup()
+        .shadow(color: .black.opacity(0.10), radius: 4, x: 0, y: 2)
+        .shadow(color: .black.opacity(0.08), radius: 24, x: 0, y: 10)
+        .padding(.top, 16)
+        .padding(.horizontal, 22)
+        .padding(.bottom, 30)
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 focusedField = .username
@@ -255,9 +271,16 @@ struct ContentView: View {
         }
     }
 
-    private var fieldBg: some View {
-        RoundedRectangle(cornerRadius: 6, style: .continuous)
-            .fill(fieldButtonFill)
+    // Two-layer blue glow: outer blurred halo + inner crisp border
+    @ViewBuilder
+    private func focusGlow(active: Bool) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .stroke(appleSystemBlue.opacity(active ? 0.55 : 0), lineWidth: 4)
+                .blur(radius: 2.5)
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .stroke(appleSystemBlue.opacity(active ? 1.0 : 0), lineWidth: 2)
+        }
     }
 
     private func cancel() { NSApp.terminate(nil) }
