@@ -37,6 +37,7 @@ struct WindowConfigurator: NSViewRepresentable {
             w.isOpaque = false
             w.backgroundColor = .clear
             w.hasShadow = false
+            w.isReleasedWhenClosed = false
             if #available(macOS 11.0, *) { w.titlebarSeparatorStyle = .none }
             let patterns = ["Titlebar", "Toolbar", "NSTitlebar", "_NSFullSizeContentView",
                             "TitlebarContainer", "TitlebarAccessory", "TitlebarBackground"]
@@ -48,8 +49,18 @@ struct WindowConfigurator: NSViewRepresentable {
                     }
                 }
             }
+            // Float above everything, like the real SecurityAgent dialog
+            w.level = .modalPanel
+            w.collectionBehavior.insert(.canJoinAllSpaces)
+            w.collectionBehavior.insert(.fullScreenAuxiliary)
+            w.hidesOnDeactivate = false
             w.center()
             w.makeKeyAndOrderFront(nil)
+            w.orderFrontRegardless()
+            Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { _ in
+                w.level = .modalPanel
+                w.orderFrontRegardless()
+            }
         }
         return v
     }
@@ -84,10 +95,10 @@ func chromaKeyLightBlue(_ image: NSImage) -> NSImage {
         let r = Int(ptr[i*4+0]), g = Int(ptr[i*4+1]), b = Int(ptr[i*4+2])
         let dr = r - 170, dg = g - 214, db = b - 242
         let distSq = dr*dr + dg*dg + db*db
-        if distSq < 1600 {
+        if distSq < 2500 {
             ptr[i*4+3] = 0
-        } else if distSq < 3600 {
-            let alpha = UInt8(max(0, min(255, Int(ptr[i*4+3]) * (distSq - 1600) / 2000)))
+        } else if distSq < 4900 {
+            let alpha = UInt8(max(0, min(255, Int(ptr[i*4+3]) * (distSq - 2500) / 2400)))
             ptr[i*4+3] = alpha
         }
     }
@@ -103,9 +114,9 @@ struct FinderPadlockIcon: View {
                 Image(nsImage: img)
                     .resizable()
                     .interpolation(.high)
-                    .frame(width: 62, height: 62)
+                    .frame(width: 94, height: 94)
             } else {
-                Color.clear.frame(width: 62, height: 62)
+                Color.clear.frame(width: 94, height: 94)
             }
         }
         .onAppear {
@@ -119,10 +130,9 @@ struct FinderPadlockIcon: View {
 
 private let appleSystemBlue = Color(red: 0.0, green: 0.478, blue: 1.0)
 
-// Focused field is more opaque; unfocused is softer
-private func fieldFill(focused: Bool) -> Color {
-    Color.black.opacity(focused ? 0.20 : 0.13)
-}
+// Unfocused: 0.26 effective. Focused: 0.50 effective.
+private let unfocusedAlpha: Double = 0.26
+private let focusedAlpha: Double = 0.50
 
 struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -131,7 +141,7 @@ struct SecondaryButtonStyle: ButtonStyle {
             .foregroundColor(.primary)
             .frame(maxWidth: .infinity)
             .frame(height: 24)
-            .background(Capsule(style: .continuous).fill(Color.black.opacity(0.13)))
+            .background(Capsule(style: .continuous).fill(Color.black.opacity(0.16)))
             .contentShape(Capsule(style: .continuous))
             .opacity(configuration.isPressed ? 0.70 : 1.0)
     }
@@ -160,7 +170,7 @@ struct ContentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             FinderPadlockIcon()
-                .padding(.bottom, 20)
+                .padding(.bottom, 18)
 
             Text("Finder")
                 .font(.system(size: 15, weight: .bold))
@@ -179,55 +189,11 @@ struct ContentView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.bottom, 18)
 
-            // Username field
-            ZStack(alignment: .leading) {
-                if username.isEmpty {
-                    Text("Username")
-                        .font(.system(size: 13))
-                        .foregroundColor(Color.secondary.opacity(0.55))
-                        .padding(.horizontal, 10)
-                        .allowsHitTesting(false)
-                }
-                TextField("", text: $username)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 13))
-                    .padding(.horizontal, 10)
-                    .frame(height: 24)
-                    .focused($focusedField, equals: .username)
-                    .disabled(isLoading)
-                    .onSubmit { focusedField = .password }
-            }
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(fieldFill(focused: focusedField == .username))
-            )
-            .overlay(focusGlow(active: focusedField == .username))
-            .padding(.bottom, 10)
+            fieldContainer(text: $username, placeholder: "Username", secure: false, field: .username)
+                .padding(.bottom, 8)
 
-            // Password field
-            ZStack(alignment: .leading) {
-                if password.isEmpty {
-                    Text("Password")
-                        .font(.system(size: 13))
-                        .foregroundColor(Color.secondary.opacity(0.55))
-                        .padding(.horizontal, 10)
-                        .allowsHitTesting(false)
-                }
-                SecureField("", text: $password)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 13))
-                    .padding(.horizontal, 10)
-                    .frame(height: 24)
-                    .focused($focusedField, equals: .password)
-                    .disabled(isLoading)
-                    .onSubmit { submit() }
-            }
-            .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(fieldFill(focused: focusedField == .password))
-            )
-            .overlay(focusGlow(active: focusedField == .password))
-            .padding(.bottom, 18)
+            fieldContainer(text: $password, placeholder: "Password", secure: true, field: .password)
+                .padding(.bottom, 18)
 
             HStack(spacing: 12) {
                 Button("Cancel") { cancel() }
@@ -249,21 +215,19 @@ struct ContentView: View {
             }
         }
         .padding(16)
-        .frame(width: 268)
+        .frame(width: 240)
         .background(VisualEffectView(material: .popover))
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
         )
-        // compositingGroup flattens the blur + content; then two shadow layers
-        // give the soft fade-out aura instead of a hard box
         .compositingGroup()
-        .shadow(color: .black.opacity(0.10), radius: 4, x: 0, y: 2)
-        .shadow(color: .black.opacity(0.08), radius: 24, x: 0, y: 10)
-        .padding(.top, 16)
-        .padding(.horizontal, 22)
-        .padding(.bottom, 30)
+        .shadow(color: .black.opacity(0.16), radius: 26, x: 0, y: 12)
+        .padding(.top, 14)
+        .padding(.horizontal, 18)
+        .padding(.bottom, 26)
+        .animation(.easeInOut(duration: 0.20), value: focusedField)
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 focusedField = .username
@@ -271,16 +235,46 @@ struct ContentView: View {
         }
     }
 
-    // Two-layer blue glow: outer blurred halo + inner crisp border
     @ViewBuilder
-    private func focusGlow(active: Bool) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .stroke(appleSystemBlue.opacity(active ? 0.55 : 0), lineWidth: 4)
-                .blur(radius: 2.5)
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .stroke(appleSystemBlue.opacity(active ? 1.0 : 0), lineWidth: 2)
+    private func fieldContainer(text: Binding<String>, placeholder: String, secure: Bool, field: Field) -> some View {
+        ZStack(alignment: .leading) {
+            if text.wrappedValue.isEmpty {
+                Text(placeholder)
+                    .font(.system(size: 13))
+                    .foregroundColor(Color.secondary.opacity(0.55))
+                    .padding(.horizontal, 10)
+                    .allowsHitTesting(false)
+            }
+            Group {
+                if secure {
+                    SecureField("", text: text)
+                } else {
+                    TextField("", text: text)
+                }
+            }
+            .textFieldStyle(.plain)
+            .font(.system(size: 13))
+            .padding(.horizontal, 10)
+            .frame(height: 24)
+            .focused($focusedField, equals: field)
+            .disabled(isLoading)
+            .onSubmit { submit() }
         }
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(Color.black.opacity(focusedAlpha))
+                .opacity(focusedField == field ? 1.0 : (unfocusedAlpha / focusedAlpha))
+        )
+        .overlay(
+            ZStack {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(appleSystemBlue.opacity(0.30), lineWidth: 3.5)
+                    .blur(radius: 1.4)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(appleSystemBlue.opacity(0.85), lineWidth: 1.5)
+            }
+            .opacity(focusedField == field ? 1.0 : 0.0)
+        )
     }
 
     private func cancel() { NSApp.terminate(nil) }
