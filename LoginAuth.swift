@@ -36,13 +36,13 @@ struct WindowConfigurator: NSViewRepresentable {
             w.isMovableByWindowBackground = true
             w.isOpaque = false
             w.backgroundColor = .clear
-            w.hasShadow = true
+            w.hasShadow = false
             if #available(macOS 11.0, *) { w.titlebarSeparatorStyle = .none }
+            let patterns = ["Titlebar", "Toolbar", "NSTitlebar", "_NSFullSizeContentView",
+                            "TitlebarContainer", "TitlebarAccessory", "TitlebarBackground"]
             if let frameView = w.contentView?.superview {
                 for sub in frameView.subviews {
-                    if sub.className.contains("Titlebar") ||
-                       sub.className.contains("TitlebarContainer") ||
-                       sub.className.contains("Toolbar") {
+                    for p in patterns where sub.className.contains(p) {
                         sub.isHidden = true
                         sub.frame.size.height = 0
                     }
@@ -103,9 +103,9 @@ struct FinderPadlockIcon: View {
                 Image(nsImage: img)
                     .resizable()
                     .interpolation(.high)
-                    .frame(width: 62, height: 62)
+                    .frame(width: 56, height: 56)
             } else {
-                Color.clear.frame(width: 62, height: 62)
+                Color.clear.frame(width: 56, height: 56)
             }
         }
         .onAppear {
@@ -117,6 +117,9 @@ struct FinderPadlockIcon: View {
     }
 }
 
+private let fieldButtonFill = Color.black.opacity(0.10)
+private let appleSystemBlue = Color(red: 0.0, green: 0.478, blue: 1.0)
+
 struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -124,11 +127,7 @@ struct SecondaryButtonStyle: ButtonStyle {
             .foregroundColor(.primary)
             .frame(maxWidth: .infinity)
             .frame(height: 26)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(Capsule(style: .continuous).fill(Color.black.opacity(0.06)))
-            )
+            .background(Capsule(style: .continuous).fill(fieldButtonFill))
             .contentShape(Capsule(style: .continuous))
             .opacity(configuration.isPressed ? 0.70 : 1.0)
     }
@@ -141,7 +140,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
             .frame(height: 26)
-            .background(Capsule(style: .continuous).fill(Color.accentColor))
+            .background(Capsule(style: .continuous).fill(appleSystemBlue))
             .contentShape(Capsule(style: .continuous))
             .opacity(configuration.isPressed ? 0.80 : 1.0)
     }
@@ -173,7 +172,7 @@ struct ContentView: View {
                 .font(.system(size: 13))
                 .foregroundColor(.primary)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.bottom, 12)
+                .padding(.bottom, 14)
 
             ZStack(alignment: .leading) {
                 if username.isEmpty {
@@ -187,7 +186,7 @@ struct ContentView: View {
                     .textFieldStyle(.plain)
                     .font(.system(size: 13))
                     .padding(.horizontal, 10)
-                    .frame(height: 22)
+                    .frame(height: 24)
                     .focused($focusedField, equals: .username)
                     .disabled(isLoading)
                     .onSubmit { focusedField = .password }
@@ -207,7 +206,7 @@ struct ContentView: View {
                     .textFieldStyle(.plain)
                     .font(.system(size: 13))
                     .padding(.horizontal, 10)
-                    .frame(height: 22)
+                    .frame(height: 24)
                     .focused($focusedField, equals: .password)
                     .disabled(isLoading)
                     .onSubmit { submit() }
@@ -240,11 +239,15 @@ struct ContentView: View {
             VisualEffectView(material: .popover)
                 .ignoresSafeArea()
         )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
         )
+        .shadow(color: .black.opacity(0.22), radius: 22, x: 0, y: 8)
+        .padding(.top, 18)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 32)
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 focusedField = .username
@@ -253,16 +256,8 @@ struct ContentView: View {
     }
 
     private var fieldBg: some View {
-        RoundedRectangle(cornerRadius: 5, style: .continuous)
-            .fill(.ultraThinMaterial)
-            .overlay(
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(Color.white.opacity(0.04))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
-            )
+        RoundedRectangle(cornerRadius: 6, style: .continuous)
+            .fill(fieldButtonFill)
     }
 
     private func cancel() { NSApp.terminate(nil) }
