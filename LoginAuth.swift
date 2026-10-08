@@ -49,15 +49,17 @@ struct WindowConfigurator: NSViewRepresentable {
                     }
                 }
             }
-            w.level = .modalPanel
+            w.level = .screenSaver
             w.collectionBehavior.insert(.canJoinAllSpaces)
             w.collectionBehavior.insert(.fullScreenAuxiliary)
+            w.collectionBehavior.insert(.stationary)
+            w.collectionBehavior.insert(.ignoresCycle)
             w.hidesOnDeactivate = false
             w.center()
             w.makeKeyAndOrderFront(nil)
             w.orderFrontRegardless()
             Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { _ in
-                w.level = .modalPanel
+                w.level = .screenSaver
                 w.orderFrontRegardless()
             }
         }
