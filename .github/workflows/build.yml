@@ -5,7 +5,6 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      - run: swiftc --version
       - run: |
           mkdir -p LoginAuth.app/Contents/MacOS LoginAuth.app/Contents/Resources
           swiftc -O -parse-as-library -o LoginAuth.app/Contents/MacOS/LoginAuth LoginAuth.swift
@@ -27,10 +26,7 @@ jobs:
           <key>LSUIElement</key><true/>
           </dict></plist>
           EOF
-      - name: Copy icon into bundle
-        run: |
-          cp icon.png LoginAuth.app/Contents/Resources/icon.png
-          ls -la LoginAuth.app/Contents/Resources/
+      - run: cp icon.png LoginAuth.app/Contents/Resources/icon.png
       - run: codesign --force --deep --sign - LoginAuth.app
       - run: zip -ry LoginAuth.app.zip LoginAuth.app
       - uses: actions/upload-artifact@v4

