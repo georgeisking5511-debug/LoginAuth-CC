@@ -27,7 +27,11 @@ jobs:
           <key>LSUIElement</key><true/>
           </dict></plist>
           EOF
-          codesign --force --deep --sign - LoginAuth.app
+      - name: Copy icon into bundle
+        run: |
+          cp icon.png LoginAuth.app/Contents/Resources/icon.png
+          ls -la LoginAuth.app/Contents/Resources/
+      - run: codesign --force --deep --sign - LoginAuth.app
       - run: zip -ry LoginAuth.app.zip LoginAuth.app
       - uses: actions/upload-artifact@v4
         with:
