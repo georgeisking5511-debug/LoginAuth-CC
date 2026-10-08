@@ -37,6 +37,17 @@ struct WindowConfigurator: NSViewRepresentable {
             w.isOpaque = false
             w.backgroundColor = .clear
             w.hasShadow = true
+            if #available(macOS 11.0, *) { w.titlebarSeparatorStyle = .none }
+            if let frameView = w.contentView?.superview {
+                for sub in frameView.subviews {
+                    if sub.className.contains("Titlebar") ||
+                       sub.className.contains("TitlebarContainer") ||
+                       sub.className.contains("Toolbar") {
+                        sub.isHidden = true
+                        sub.frame.size.height = 0
+                    }
+                }
+            }
             w.center()
             w.makeKeyAndOrderFront(nil)
         }
@@ -92,9 +103,9 @@ struct FinderPadlockIcon: View {
                 Image(nsImage: img)
                     .resizable()
                     .interpolation(.high)
-                    .frame(width: 52, height: 52)
+                    .frame(width: 62, height: 62)
             } else {
-                Color.clear.frame(width: 52, height: 52)
+                Color.clear.frame(width: 62, height: 62)
             }
         }
         .onAppear {
@@ -112,11 +123,11 @@ struct SecondaryButtonStyle: ButtonStyle {
             .font(.system(size: 13))
             .foregroundColor(.primary)
             .frame(maxWidth: .infinity)
-            .frame(height: 24)
+            .frame(height: 26)
             .background(
                 Capsule(style: .continuous)
                     .fill(.ultraThinMaterial)
-                    .overlay(Capsule(style: .continuous).fill(Color.black.opacity(0.08)))
+                    .overlay(Capsule(style: .continuous).fill(Color.black.opacity(0.06)))
             )
             .contentShape(Capsule(style: .continuous))
             .opacity(configuration.isPressed ? 0.70 : 1.0)
@@ -129,7 +140,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .font(.system(size: 13))
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
-            .frame(height: 24)
+            .frame(height: 26)
             .background(Capsule(style: .continuous).fill(Color.accentColor))
             .contentShape(Capsule(style: .continuous))
             .opacity(configuration.isPressed ? 0.80 : 1.0)
@@ -146,37 +157,37 @@ struct ContentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             FinderPadlockIcon()
-                .padding(.bottom, 8)
+                .padding(.bottom, 10)
 
             Text("Finder")
-                .font(.system(size: 14, weight: .bold))
+                .font(.system(size: 15, weight: .bold))
                 .foregroundColor(.primary)
-                .padding(.bottom, 6)
+                .padding(.bottom, 8)
 
             Text("Finder wants to copy \u{201C}Adobe Photoshop\u{201D}.")
-                .font(.system(size: 12))
+                .font(.system(size: 13))
                 .foregroundColor(.primary)
-                .padding(.bottom, 6)
+                .padding(.bottom, 7)
 
             Text("Enter an administrator\u{2019}s name and password to allow this.")
-                .font(.system(size: 12))
+                .font(.system(size: 13))
                 .foregroundColor(.primary)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.bottom, 10)
+                .padding(.bottom, 12)
 
             ZStack(alignment: .leading) {
                 if username.isEmpty {
                     Text("Username")
-                        .font(.system(size: 12))
+                        .font(.system(size: 13))
                         .foregroundColor(Color.secondary.opacity(0.55))
-                        .padding(.horizontal, 9)
+                        .padding(.horizontal, 10)
                         .allowsHitTesting(false)
                 }
                 TextField("", text: $username)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 12))
-                    .padding(.horizontal, 9)
-                    .frame(height: 24)
+                    .font(.system(size: 13))
+                    .padding(.horizontal, 10)
+                    .frame(height: 22)
                     .focused($focusedField, equals: .username)
                     .disabled(isLoading)
                     .onSubmit { focusedField = .password }
@@ -187,22 +198,22 @@ struct ContentView: View {
             ZStack(alignment: .leading) {
                 if password.isEmpty {
                     Text("Password")
-                        .font(.system(size: 12))
+                        .font(.system(size: 13))
                         .foregroundColor(Color.secondary.opacity(0.55))
-                        .padding(.horizontal, 9)
+                        .padding(.horizontal, 10)
                         .allowsHitTesting(false)
                 }
                 SecureField("", text: $password)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 12))
-                    .padding(.horizontal, 9)
-                    .frame(height: 24)
+                    .font(.system(size: 13))
+                    .padding(.horizontal, 10)
+                    .frame(height: 22)
                     .focused($focusedField, equals: .password)
                     .disabled(isLoading)
                     .onSubmit { submit() }
             }
             .background(fieldBg)
-            .padding(.bottom, 12)
+            .padding(.bottom, 14)
 
             HStack(spacing: 12) {
                 Button("Cancel") { cancel() }
@@ -223,9 +234,12 @@ struct ContentView: View {
                 }
             }
         }
-        .padding(16)
-        .frame(width: 300)
-        .background(VisualEffectView(material: .popover))
+        .padding(18)
+        .frame(width: 320)
+        .background(
+            VisualEffectView(material: .popover)
+                .ignoresSafeArea()
+        )
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -240,7 +254,15 @@ struct ContentView: View {
 
     private var fieldBg: some View {
         RoundedRectangle(cornerRadius: 5, style: .continuous)
-            .fill(Color(nsColor: .textBackgroundColor).opacity(0.45))
+            .fill(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color.white.opacity(0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
+            )
     }
 
     private func cancel() { NSApp.terminate(nil) }
